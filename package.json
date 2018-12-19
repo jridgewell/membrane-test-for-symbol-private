@@ -1,0 +1,19 @@
+{
+  "name": "membrane-test-for-symbol-private",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.spec.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Igmat/membrane-test-for-symbol-private.git"
+  },
+  "author": "Ihor Chulinda <ichulinda@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Igmat/membrane-test-for-symbol-private/issues"
+  },
+  "homepage": "https://github.com/Igmat/membrane-test-for-symbol-private#readme"
+}
