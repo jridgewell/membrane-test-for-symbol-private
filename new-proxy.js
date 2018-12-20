@@ -1,41 +1,55 @@
 /**
  * @param {any} obj
  * @param {ProxyHandler} handler
+ * @param {Set<symbol>} whitelist
  */
-function newProxy(obj, handler) {
+function newProxy(obj, handler, whitelist) {
+    whitelist = whitelist || new Set;
     return new Proxy(obj, {
         ...handler,
         get(target, p, receiver) {
-            if (typeof p !== 'symbol' && handler.get) return handler.get(target, p, receiver);
+            if ((typeof p !== 'symbol' || whitelist.has(p)) && handler.get) {
+                return handler.get(...arguments);
+            }
 
-            return Reflect.get(target, p, receiver);
+            return Reflect.get(...arguments);
         },
         getOwnPropertyDescriptor(target, p) {
-            if (typeof p !== 'symbol' && handler.getOwnPropertyDescriptor) return handler.getOwnPropertyDescriptor(target, p);
+            if ((typeof p !== 'symbol' || whitelist.has(p)) && handler.getOwnPropertyDescriptor) {
+                return handler.getOwnPropertyDescriptor(...arguments);
+            }
 
-            return Reflect.getOwnPropertyDescriptor(target, p);
+            return Reflect.getOwnPropertyDescriptor(...arguments);
         },
         has(target, p) {
-            if (typeof p !== 'symbol' && handler.has) return handler.has(target, p);
+            if ((typeof p !== 'symbol' || whitelist.has(p)) && handler.has) {
+                return handler.has(...arguments);
+            }
 
-            return Reflect.has(target, p);
+            return Reflect.has(...arguments);
 
         },
         set(target, p, value, receiver) {
-            if (typeof p !== 'symbol' && handler.set) return handler.set(target, p, value, receiver);
+            if ((typeof p !== 'symbol' || whitelist.has(p)) && handler.set) {
+                return handler.set(...arguments);
+            }
 
-            return Reflect.set(target, p, value, receiver);
+            return Reflect.set(...arguments);
 
         },
         deleteProperty(target, p) {
-            if (typeof p !== 'symbol' && handler.deleteProperty) return handler.deleteProperty(target, p);
+            if ((typeof p !== 'symbol' || whitelist.has(p)) && handler.deleteProperty) {
+                return handler.deleteProperty(...arguments);
+            }
 
-            return Reflect.deleteProperty(target, p);
+            return Reflect.deleteProperty(...arguments);
         },
         defineProperty(target, p, attributes) {
-            if (typeof p !== 'symbol' && handler.defineProperty) return handler.defineProperty(target, p, attributes);
+            if ((typeof p !== 'symbol' || whitelist.has(p)) && handler.defineProperty) {
+                return handler.defineProperty(...arguments);
+            }
 
-            return Reflect.defineProperty(target, p, attributes);
+            return Reflect.defineProperty(...arguments);
         },
     });
 }
