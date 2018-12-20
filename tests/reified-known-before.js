@@ -66,6 +66,9 @@ console.group('Reified access (private symbols known before set)')
     console.assert(got !== leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
+
+    // Sanity check
+    console.assert(leftValue[leftPriv] === leftValue);
 }
 
 {
@@ -85,6 +88,9 @@ console.group('Reified access (private symbols known before set)')
     const got = wrappedLeftSide.leftValue[wrappedLeftSide.leftPriv];
     // Test that it's unwrapped.
     console.assert(got === rightValue);
+
+    // Sanity check
+    console.assert(leftValue[leftPriv] === wrappedRightSide.rightValue);
 }
 
 {
@@ -107,6 +113,9 @@ console.group('Reified access (private symbols known before set)')
     console.assert(got !== leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
+
+    // Sanity check
+    console.assert(leftValue[wrappedRightSide.rightPriv] === leftValue);
 }
 
 {
@@ -126,6 +135,9 @@ console.group('Reified access (private symbols known before set)')
     const got = wrappedLeftSide.leftValue[rightPriv];
     // Test that it's unwrapped.
     console.assert(got === rightValue);
+
+    // Sanity check
+    console.assert(leftValue[wrappedRightSide.rightPriv] === wrappedRightSide.rightValue);
 }
 
 {
@@ -149,6 +161,9 @@ console.group('Reified access (private symbols known before set)')
     console.assert(got !== leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
+
+    // Sanity check
+    console.assert(wrappedRightSide.rightValue[leftPriv] === leftValue);
 }
 
 {
@@ -168,6 +183,9 @@ console.group('Reified access (private symbols known before set)')
     const got = rightValue[wrappedLeftSide.leftPriv];
     // Test that it's unwrapped.
     console.assert(got === rightValue);
+
+    // Sanity check
+    console.assert(wrappedRightSide.rightValue[leftPriv] === wrappedRightSide.rightValue);
 }
 
 {
@@ -190,6 +208,9 @@ console.group('Reified access (private symbols known before set)')
     console.assert(got !== leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
+
+    // Sanity check
+    console.assert(wrappedRightSide.rightValue[wrappedRightSide.rightPriv] === leftValue);
 }
 
 {
@@ -209,6 +230,9 @@ console.group('Reified access (private symbols known before set)')
     const got = rightValue[rightPriv];
     // Test that it's unwrapped.
     console.assert(got === rightValue);
+
+    // Sanity check
+    console.assert(wrappedRightSide.rightValue[wrappedRightSide.rightPriv] === wrappedRightSide.rightValue);
 }
 
 console.groupEnd('Closure access only (no exposed reified key)')

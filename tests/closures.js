@@ -73,6 +73,9 @@ console.group('Closure access only (no exposed reified key)')
     console.assert(got !== leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
+
+    // Sanity check
+    console.assert(Left.get(leftValue) === leftValue);
 }
 
 {
@@ -92,6 +95,9 @@ console.group('Closure access only (no exposed reified key)')
     const got = wrappedLeftSide.get(wrappedLeftSide.leftValue);
     // Test that it's unwrapped.
     console.assert(got === rightValue);
+
+    // Sanity check
+    console.assert(Left.get(leftValue) === wrappedRightSide.rightValue);
 }
 
 {
@@ -114,6 +120,9 @@ console.group('Closure access only (no exposed reified key)')
     console.assert(got !== leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
+
+    // Sanity check
+    console.assert(wrappedRightSide.get(leftValue) === leftValue);
 }
 
 {
@@ -133,6 +142,9 @@ console.group('Closure access only (no exposed reified key)')
     const got = Right.get(wrappedLeftSide.leftValue);
     // Test that it's unwrapped.
     console.assert(got === rightValue);
+
+    // Sanity check
+    console.assert(wrappedRightSide.get(leftValue) === wrappedRightSide.rightValue);
 }
 
 {
@@ -156,6 +168,9 @@ console.group('Closure access only (no exposed reified key)')
     console.assert(got !== leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
+
+    // Sanity check
+    console.assert(Left.get(wrappedRightSide.rightValue) === leftValue);
 }
 
 {
@@ -170,11 +185,15 @@ console.group('Closure access only (no exposed reified key)')
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
+    debugger;
     Left.set(wrappedRightSide.rightValue, wrappedRightSide.rightValue);
 
     const got = wrappedLeftSide.get(rightValue);
     // Test that it's unwrapped.
     console.assert(got === rightValue);
+
+    // Sanity check
+    console.assert(Left.get(wrappedRightSide.rightValue) === wrappedRightSide.rightValue);
 }
 
 {
@@ -197,6 +216,9 @@ console.group('Closure access only (no exposed reified key)')
     console.assert(got !== leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
+
+    // Sanity check
+    console.assert(wrappedRightSide.get(wrappedRightSide.rightValue) === leftValue);
 }
 
 {
@@ -216,6 +238,9 @@ console.group('Closure access only (no exposed reified key)')
     const got = Right.get(rightValue);
     // Test that it's unwrapped.
     console.assert(got === rightValue);
+
+    // Sanity check
+    console.assert(wrappedRightSide.get(wrappedRightSide.rightValue) === wrappedRightSide.rightValue);
 }
 
 console.groupEnd('Closure access only (no exposed reified key)')

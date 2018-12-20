@@ -15,12 +15,17 @@ function isPrimitive(obj) {
 /**
  * @param {WeakMap<object, any>} originalsToProxies
  * @param {WeakMap<object, any>} proxiesToOriginals
- * @param {(proxy: any) => any} unwrapFn
  * @param {Set<symbol>} whitelist
  * @param {Set<any>} exposedToMySide
  * @param {Set<any>} exposedToOutside
  */
-function createWrapFn(originalsToProxies, proxiesToOriginals, unwrapFn, whitelist, exposedToMySide, exposedToOutside) {
+function createWrapFn(originalsToProxies, proxiesToOriginals, whitelist, exposedToMySide, exposedToOutside) {
+    function unwrap(proxy) {
+        if (proxiesToOriginals.has(proxy)) {
+            return proxiesToOriginals.get(proxy);
+        }
+        return wrap(proxy);
+    }
 
     /**
      * @param {object | Function} original
@@ -36,9 +41,9 @@ function createWrapFn(originalsToProxies, proxiesToOriginals, unwrapFn, whitelis
 
         const proxy = newProxy(original, {
             apply(target, thisArg, argArray) {
-                thisArg = unwrapFn(thisArg);
+                thisArg = unwrap(thisArg);
                 for (let i = 0; i < argArray.length; i++) {
-                    argArray[i] = unwrapFn(argArray[i]);
+                    argArray[i] = unwrap(argArray[i]);
                 }
 
                 const retval = Reflect.apply(target, thisArg, argArray);
@@ -54,10 +59,10 @@ function createWrapFn(originalsToProxies, proxiesToOriginals, unwrapFn, whitelis
                     whitelist.add(retval);
                 }
 
-                return wrap(retval);
+                return unwrap(retval);
             },
             get(target, p, receiver) {
-                receiver = unwrapFn(receiver);
+                receiver = unwrap(receiver);
                 const retval = Reflect.get(target, p, receiver);
 
                 // in case when private symbols is exposed via some part of public API
@@ -71,11 +76,11 @@ function createWrapFn(originalsToProxies, proxiesToOriginals, unwrapFn, whitelis
                     whitelist.add(retval);
                 }
 
-                return wrap(retval);
+                return unwrap(retval);
             },
             set(target, p, value, receiver) {
-                value = unwrapFn(value);
-                receiver = unwrapFn(receiver);
+                value = unwrap(value);
+                receiver = unwrap(receiver);
 
                 return Reflect.set(target, p, value, receiver);
             },
@@ -108,23 +113,16 @@ function createWrapFn(originalsToProxies, proxiesToOriginals, unwrapFn, whitelis
  * @param {any} obj
  */
 function membrane(left, right) {
-    const originalProxies = new WeakMap();
-    const originalTargets = new WeakMap();
-    const outerProxies = new WeakMap();
+    const leftToProxies = new WeakMap();
+    const rightToProxies = new WeakMap();
     const exposedToRight = new Set();
     const exposedToLeft = new Set();
     const whitelist = new Set();
 
-    const wrap = createWrapFn(originalProxies, originalTargets, unwrap, whitelist, exposedToRight, exposedToLeft);
-    const wrapOuter = createWrapFn(outerProxies, originalProxies, wrap, whitelist, exposedToLeft, exposedToRight);
+    const wrapLeft = createWrapFn(leftToProxies, rightToProxies, whitelist, exposedToRight, exposedToLeft);
+    const wrapRight = createWrapFn(rightToProxies, leftToProxies, whitelist, exposedToLeft, exposedToRight);
 
-    function unwrap(proxy) {
-        return originalTargets.has(proxy)
-            ? originalTargets.get(proxy)
-            : wrapOuter(proxy);
-    }
-
-    return [wrap(left), wrapOuter(right)];
+    return [wrapLeft(left), wrapRight(right)];
 }
 
 exports.membrane = membrane;
