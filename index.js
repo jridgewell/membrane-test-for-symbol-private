@@ -13,24 +13,10 @@ function isPrimitive(obj) {
 }
 
 /**
- * @param {WeakMap<object, any>} originalsToProxies
- * @param {WeakMap<object, any>} proxiesToOriginals
- * @param {Set<any>} originals
- * @param {Set<any>} proxies
  */
-function createWrapFn(originalsToProxies, proxiesToOriginals, originals, proxies) {
-  /**
-   * @param {proxy} proxy
-   * @param {Set<any>} originals
-   * @param {Set<any>} proxies
-   */
-  function unwrap(proxy, originals, proxies) {
-    if (proxiesToOriginals.has(proxy)) {
-      return proxiesToOriginals.get(proxy);
-    }
-    return wrap(proxy, proxies, originals);
-  }
-
+function createWrapFn() {
+  const originalsToProxies = new WeakMap();
+  const proxiesToOriginals = new WeakMap();
   /**
    * Whitelist holds the known private symbols that have been exposed to the
    * membrane.
@@ -42,6 +28,18 @@ function createWrapFn(originalsToProxies, proxiesToOriginals, originals, proxies
    * we can copy the transparently-placed data to the original.
    */
   const originalToTargets = new WeakMap();
+
+  /**
+   * @param {proxy} proxy
+   * @param {Set<any>} originals
+   * @param {Set<any>} proxies
+   */
+  function unwrap(proxy, originals, proxies) {
+    if (proxiesToOriginals.has(proxy)) {
+      return proxiesToOriginals.get(proxy);
+    }
+    return wrap(proxy, proxies, originals);
+  }
 
   /**
    * @param {symbol} privateSymbol
@@ -126,14 +124,8 @@ function createWrapFn(originalsToProxies, proxiesToOriginals, originals, proxies
  * @param {any} graph
  */
 function Membrane(graph) {
-  const originalsToProxies = new WeakMap();
-  const proxiesToOriginals = new WeakMap();
-  const originals = new Set();
-  const proxies = new Set();
-
-  const wrap = createWrapFn(originalsToProxies, proxiesToOriginals, originals, proxies);
-
-  return wrap(graph, originals, proxies);
+  const wrap = createWrapFn();
+  return wrap(graph, new Set(), new Set());
 }
 
 exports.Membrane = Membrane;
