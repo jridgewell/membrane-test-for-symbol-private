@@ -107,7 +107,7 @@ function createWrapFn(originalsToProxies, proxiesToOriginals, originals, proxies
       set(target, p, value, receiver) {
         value = unwrap(value, originals, proxies);
         receiver = unwrap(receiver, originals, proxies);
-        return Reflect.set(target, p, value, receiver);
+        return Reflect.set(original, p, value, receiver);
       },
     }, whitelist);
 
