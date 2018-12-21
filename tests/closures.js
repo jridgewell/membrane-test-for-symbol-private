@@ -33,18 +33,18 @@ function setup() {
         rightValue: true,
     };
 
-    const [
-        wrappedLeftSide,
-        wrappedRightSide,
-    ] = membrane(Left, Right);
+    const graph = {
+        Left,
+    };
+    const wrappedGraph = membrane(graph);
+    wrappedGraph.Right = Right;
+
+    const wrappedLeftSide = wrappedGraph.Left;
+    const wrappedRightSide = graph.Right;
 
     return {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     };
@@ -58,46 +58,38 @@ console.group('Closure access only (no exposed reified key)')
     console.log('### bT[fT] = vT;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
-    Left.set(leftValue, leftValue);
+    Left.set(Left.leftValue, Left.leftValue);
 
     const got = wrappedLeftSide.get(wrappedLeftSide.leftValue);
     // Test that it's wrapped.
-    console.assert(got !== leftValue);
+    console.assert(got !== Left.leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
 
     // Sanity check
-    console.assert(Left.get(leftValue) === leftValue);
+    console.assert(Left.get(Left.leftValue) === Left.leftValue);
 }
 
 {
     console.log('### bT[fT] = vP;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
-    Left.set(leftValue, wrappedRightSide.rightValue);
+    Left.set(Left.leftValue, wrappedRightSide.rightValue);
 
     const got = wrappedLeftSide.get(wrappedLeftSide.leftValue);
     // Test that it's unwrapped.
-    console.assert(got === rightValue);
+    console.assert(got === Right.rightValue);
 
     // Sanity check
-    console.assert(Left.get(leftValue) === wrappedRightSide.rightValue);
+    console.assert(Left.get(Left.leftValue) === wrappedRightSide.rightValue);
 }
 
 {
@@ -105,46 +97,38 @@ console.group('Closure access only (no exposed reified key)')
     console.log('### bT[fP] = vT;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
-    wrappedRightSide.set(leftValue, leftValue);
+    wrappedRightSide.set(Left.leftValue, Left.leftValue);
 
     const got = Right.get(wrappedLeftSide.leftValue);
     // Test that it's wrapped.
-    console.assert(got !== leftValue);
+    console.assert(got !== Left.leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
 
     // Sanity check
-    console.assert(wrappedRightSide.get(leftValue) === leftValue);
+    console.assert(wrappedRightSide.get(Left.leftValue) === Left.leftValue);
 }
 
 {
     console.log('### bT[fP] = vP;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
-    wrappedRightSide.set(leftValue, wrappedRightSide.rightValue);
+    wrappedRightSide.set(Left.leftValue, wrappedRightSide.rightValue);
 
     const got = Right.get(wrappedLeftSide.leftValue);
     // Test that it's unwrapped.
-    console.assert(got === rightValue);
+    console.assert(got === Right.rightValue);
 
     // Sanity check
-    console.assert(wrappedRightSide.get(leftValue) === wrappedRightSide.rightValue);
+    console.assert(wrappedRightSide.get(Left.leftValue) === wrappedRightSide.rightValue);
 }
 
 {
@@ -153,44 +137,35 @@ console.group('Closure access only (no exposed reified key)')
     console.log('### bP[fT] = vT;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
-    Left.set(wrappedRightSide.rightValue, leftValue);
+    Left.set(wrappedRightSide.rightValue, Left.leftValue);
 
-    const got = wrappedLeftSide.get(rightValue);
+    const got = wrappedLeftSide.get(Right.rightValue);
     // Test that it's wrapped.
-    console.assert(got !== leftValue);
+    console.assert(got !== Left.leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
 
     // Sanity check
-    console.assert(Left.get(wrappedRightSide.rightValue) === leftValue);
+    console.assert(Left.get(wrappedRightSide.rightValue) === Left.leftValue);
 }
 
 {
     console.log('### bP[fT] = vP;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
-    debugger;
     Left.set(wrappedRightSide.rightValue, wrappedRightSide.rightValue);
 
-    const got = wrappedLeftSide.get(rightValue);
+    const got = wrappedLeftSide.get(Right.rightValue);
     // Test that it's unwrapped.
-    console.assert(got === rightValue);
+    console.assert(got === Right.rightValue);
 
     // Sanity check
     console.assert(Left.get(wrappedRightSide.rightValue) === wrappedRightSide.rightValue);
@@ -201,43 +176,35 @@ console.group('Closure access only (no exposed reified key)')
     console.log('### bP[fP] = vT;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
-    wrappedRightSide.set(wrappedRightSide.rightValue, leftValue);
+    wrappedRightSide.set(wrappedRightSide.rightValue, Left.leftValue);
 
-    const got = Right.get(rightValue);
+    const got = Right.get(Right.rightValue);
     // Test that it's wrapped.
-    console.assert(got !== leftValue);
+    console.assert(got !== Left.leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
 
     // Sanity check
-    console.assert(wrappedRightSide.get(wrappedRightSide.rightValue) === leftValue);
+    console.assert(wrappedRightSide.get(wrappedRightSide.rightValue) === Left.leftValue);
 }
 
 {
     console.log('### bP[fP] = vP;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
     wrappedRightSide.set(wrappedRightSide.rightValue, wrappedRightSide.rightValue);
 
-    const got = Right.get(rightValue);
+    const got = Right.get(Right.rightValue);
     // Test that it's unwrapped.
-    console.assert(got === rightValue);
+    console.assert(got === Right.rightValue);
 
     // Sanity check
     console.assert(wrappedRightSide.get(wrappedRightSide.rightValue) === wrappedRightSide.rightValue);

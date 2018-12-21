@@ -15,72 +15,71 @@ function isPrimitive(obj) {
 /**
  * @param {WeakMap<object, any>} originalsToProxies
  * @param {WeakMap<object, any>} proxiesToOriginals
- * @param {Set<symbol>} whitelist
- * @param {Set<any>} exposedToMySide
- * @param {Set<any>} exposedToOutside
+ * @param {Set<any>} originals
+ * @param {Set<any>} proxies
  */
-function createWrapFn(originalsToProxies, proxiesToOriginals, whitelist, exposedToMySide, exposedToOutside) {
-    function unwrap(proxy) {
+function createWrapFn(originalsToProxies, proxiesToOriginals, originals, proxies) {
+    /**
+     * @param {proxy} proxy
+     * @param {WeakMap<object, any>} originalsToProxies
+     * @param {WeakMap<object, any>} proxiesToOriginals
+     * @param {Set<any>} originals
+     * @param {Set<any>} proxies
+     */
+    function unwrap(proxy, originalsToProxies, proxiesToOriginals, originals, proxies) {
         if (proxiesToOriginals.has(proxy)) {
             return proxiesToOriginals.get(proxy);
         }
-        return wrap(proxy);
+        return wrap(proxy, proxiesToOriginals, originalsToProxies, proxies, originals);
     }
 
     /**
      * @param {object | Function} original
+     * @param {WeakMap<object, any>} originalsToProxies
+     * @param {WeakMap<object, any>} proxiesToOriginals
+     * @param {Set<any>} originals
+     * @param {Set<any>} proxies
      */
-    function wrap(original) {
+    function wrap(original, originalsToProxies, proxiesToOriginals, originals, proxies) {
         // we don't need to wrap any primitive values
         if (isPrimitive(original)) return original;
         // we also don't need to wrap already wrapped values
         if (originalsToProxies.has(original)) return originalsToProxies.get(original);
         // we also don't need to wrap proxy second time
-        if (proxiesToOriginals.has(original)) return original;
-        exposedToOutside.add(original);
+        if (proxiesToOriginals.has(original)) return proxiesToOriginals.get(original);
+        const shadowTarget = typeof original === 'function'
+            ? () => { }
+            : {};
 
-        const proxy = newProxy(original, {
+        // we use `newProxy` instead of `new Proxy` to emulate behavior of `Symbol.private`
+        //       note that we don't use `original` here as proxy target
+        //                     ↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+        const proxy = new Proxy(shadowTarget, {
             apply(target, thisArg, argArray) {
-                thisArg = unwrap(thisArg);
+                thisArg = unwrap(thisArg, originalsToProxies, proxiesToOriginals, originals, proxies);
                 for (let i = 0; i < argArray.length; i++) {
-                    argArray[i] = unwrap(argArray[i]);
+                    if (!isPrimitive(argArray[i])) {
+                        argArray[i] = unwrap(argArray[i], originalsToProxies, proxiesToOriginals, originals, proxies);
+                    }
                 }
 
-                const retval = Reflect.apply(target, thisArg, argArray);
+                //          but we use `original` here instead of `target`
+                //                           ↓↓↓↓↓↓↓↓
+                const retval = Reflect.apply(original, thisArg, argArray);
 
-                // in case when private symbols is exposed via some part of public API
-                // we have to add such symbol to all possible targets where it could appear
-                if (typeof retval === 'symbol' && !whitelist.has(retval) /* && retval.private */) {
-                    exposedToMySide.forEach(ex => {
-                        if (ex.hasOwnProperty(retval)) {
-                            ex[retval] = wrap(ex[retval]);
-                        }
-                    });
-                    whitelist.add(retval);
-                }
-
-                return unwrap(retval);
+                return unwrap(retval, originalsToProxies, proxiesToOriginals, originals, proxies);
             },
             get(target, p, receiver) {
-                receiver = unwrap(receiver);
-                const retval = Reflect.get(target, p, receiver);
+                receiver = unwrap(receiver, originalsToProxies, proxiesToOriginals, originals, proxies);
+                //       but we use `original` here instead of `target`
+                //                         ↓↓↓↓↓↓↓↓
+                const retval = Reflect.get(original, p, receiver);
 
-                // in case when private symbols is exposed via some part of public API
-                // we have to add such symbol to all possible targets where it could appear
-                if (typeof retval === 'symbol' && !whitelist.has(retval) /* && retval.private */) {
-                    exposedToMySide.forEach(ex => {
-                        if (ex.hasOwnProperty(retval)) {
-                            ex[retval] = wrap(ex[retval]);
-                        }
-                    });
-                    whitelist.add(retval);
-                }
-
-                return unwrap(retval);
+                return unwrap(retval, originalsToProxies, proxiesToOriginals, originals, proxies);
             },
             set(target, p, value, receiver) {
-                value = unwrap(value);
-                receiver = unwrap(receiver);
+                value = unwrap(value, originalsToProxies, proxiesToOriginals, originals, proxies);
+                receiver = unwrap(receiver, originalsToProxies, proxiesToOriginals, originals, proxies);
 
                 return Reflect.set(target, p, value, receiver);
             },
@@ -93,12 +92,13 @@ function createWrapFn(originalsToProxies, proxiesToOriginals, whitelist, exposed
             // preventExtensions(target) { },
             // getOwnPropertyDescriptor(target, p) { },
             // has(target, p) { },
+            // set(target, p, value, receiver) { },
             // deleteProperty(target, p) { },
             // defineProperty(target, p, attributes) { },
             // enumerate(target) { },
             // ownKeys(target) { },
             // construct(target, argArray, newTarget) { },
-        }, whitelist);
+        });
 
         originalsToProxies.set(original, proxy);
         proxiesToOriginals.set(proxy, original);
@@ -110,19 +110,17 @@ function createWrapFn(originalsToProxies, proxiesToOriginals, whitelist, exposed
 }
 
 /**
- * @param {any} obj
+ * @param {any} graph
  */
-function membrane(left, right) {
-    const leftToProxies = new WeakMap();
-    const rightToProxies = new WeakMap();
-    const exposedToRight = new Set();
-    const exposedToLeft = new Set();
-    const whitelist = new Set();
+function membrane(graph) {
+    const originalsToProxies = new WeakMap();
+    const proxiesToOriginals = new WeakMap();
+    const originals = new Set();
+    const proxies = new Set();
 
-    const wrapLeft = createWrapFn(leftToProxies, rightToProxies, whitelist, exposedToRight, exposedToLeft);
-    const wrapRight = createWrapFn(rightToProxies, leftToProxies, whitelist, exposedToLeft, exposedToRight);
+    const wrap = createWrapFn(originalsToProxies, proxiesToOriginals, originals, proxies);
 
-    return [wrapLeft(left), wrapRight(right)];
+    return wrap(graph, originalsToProxies, proxiesToOriginals, originals, proxies);
 }
 
 exports.membrane = membrane;

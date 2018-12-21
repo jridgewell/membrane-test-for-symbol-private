@@ -19,28 +19,25 @@ function setup() {
     };
     Right.rightPriv = rightPriv;
 
-    const [
-        wrappedLeftSide,
-        wrappedRightSide,
-    ] = membrane(Left, Right);
-
-    expose(wrappedLeftSide, wrappedRightSide);
-
-    return {
+    const graph = {
         Left,
-        leftValue,
-        leftPriv,
-        Right,
-        rightValue,
-        rightPriv,
-        wrappedLeftSide,
-        wrappedRightSide,
     };
-}
-function expose(wrappedLeftSide, wrappedRightSide) {
+    const wrappedGraph = membrane(graph);
+    wrappedGraph.Right = Right;
+
+    const wrappedLeftSide = wrappedGraph.Left;
+    const wrappedRightSide = graph.Right;
+
     // This exposes the private symbols to the membrane.
     wrappedLeftSide.leftPriv;
     wrappedRightSide.rightPriv;
+
+    return {
+        Left,
+        Right,
+        wrappedLeftSide,
+        wrappedRightSide,
+    };
 }
 
 console.group('Reified access (private symbols known before set)')
@@ -51,46 +48,38 @@ console.group('Reified access (private symbols known before set)')
     console.log('### bT[fT] = vT;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
-    leftValue[leftPriv] = leftValue;
+    Left.leftValue[Left.leftPriv] = Left.leftValue;
 
     const got = wrappedLeftSide.leftValue[wrappedLeftSide.leftPriv];
     // Test that it's wrapped.
-    console.assert(got !== leftValue);
+    console.assert(got !== Left.leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
 
     // Sanity check
-    console.assert(leftValue[leftPriv] === leftValue);
+    console.assert(Left.leftValue[Left.leftPriv] === Left.leftValue);
 }
 
 {
     console.log('### bT[fT] = vP;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
-    leftValue[leftPriv] = wrappedRightSide.rightValue;
+    Left.leftValue[Left.leftPriv] = wrappedRightSide.rightValue;
 
     const got = wrappedLeftSide.leftValue[wrappedLeftSide.leftPriv];
     // Test that it's unwrapped.
-    console.assert(got === rightValue);
+    console.assert(got === Right.rightValue);
 
     // Sanity check
-    console.assert(leftValue[leftPriv] === wrappedRightSide.rightValue);
+    console.assert(Left.leftValue[Left.leftPriv] === wrappedRightSide.rightValue);
 }
 
 {
@@ -98,46 +87,38 @@ console.group('Reified access (private symbols known before set)')
     console.log('### bT[fP] = vT;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
-    leftValue[wrappedRightSide.rightPriv] = leftValue;
+    Left.leftValue[wrappedRightSide.rightPriv] = Left.leftValue;
 
-    const got = wrappedLeftSide.leftValue[rightPriv];
+    const got = wrappedLeftSide.leftValue[Right.rightPriv];
     // Test that it's wrapped.
-    console.assert(got !== leftValue);
+    console.assert(got !== Left.leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
 
     // Sanity check
-    console.assert(leftValue[wrappedRightSide.rightPriv] === leftValue);
+    console.assert(Left.leftValue[wrappedRightSide.rightPriv] === Left.leftValue);
 }
 
 {
     console.log('### bT[fP] = vP;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
-    leftValue[wrappedRightSide.rightPriv] = wrappedRightSide.rightValue;
+    Left.leftValue[wrappedRightSide.rightPriv] = wrappedRightSide.rightValue;
 
-    const got = wrappedLeftSide.leftValue[rightPriv];
+    const got = wrappedLeftSide.leftValue[Right.rightPriv];
     // Test that it's unwrapped.
-    console.assert(got === rightValue);
+    console.assert(got === Right.rightValue);
 
     // Sanity check
-    console.assert(leftValue[wrappedRightSide.rightPriv] === wrappedRightSide.rightValue);
+    console.assert(Left.leftValue[wrappedRightSide.rightPriv] === wrappedRightSide.rightValue);
 }
 
 {
@@ -146,46 +127,38 @@ console.group('Reified access (private symbols known before set)')
     console.log('### bP[fT] = vT;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
-    wrappedRightSide.rightValue[leftPriv] = leftValue;
+    wrappedRightSide.rightValue[Left.leftPriv] = Left.leftValue;
 
-    const got = rightValue[leftPriv];
+    const got = Right.rightValue[wrappedLeftSide.leftPriv];
     // Test that it's wrapped.
-    console.assert(got !== leftValue);
+    console.assert(got !== Left.leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
 
     // Sanity check
-    console.assert(wrappedRightSide.rightValue[leftPriv] === leftValue);
+    console.assert(wrappedRightSide.rightValue[Left.leftPriv] === Left.leftValue);
 }
 
 {
     console.log('### bP[fT] = vP;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
-    wrappedRightSide.rightValue[leftPriv] = wrappedRightSide.rightValue;
+    wrappedRightSide.rightValue[Left.leftPriv] = wrappedRightSide.rightValue;
 
-    const got = rightValue[wrappedLeftSide.leftPriv];
+    const got = Right.rightValue[wrappedLeftSide.leftPriv];
     // Test that it's unwrapped.
-    console.assert(got === rightValue);
+    console.assert(got === Right.rightValue);
 
     // Sanity check
-    console.assert(wrappedRightSide.rightValue[leftPriv] === wrappedRightSide.rightValue);
+    console.assert(wrappedRightSide.rightValue[Left.leftPriv] === wrappedRightSide.rightValue);
 }
 
 {
@@ -193,43 +166,35 @@ console.group('Reified access (private symbols known before set)')
     console.log('### bP[fP] = vT;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
-    wrappedRightSide.rightValue[wrappedRightSide.rightPriv] = leftValue;
+    wrappedRightSide.rightValue[wrappedRightSide.rightPriv] = Left.leftValue;
 
-    const got = rightValue[rightPriv];
+    const got = Right.rightValue[Right.rightPriv];
     // Test that it's wrapped.
-    console.assert(got !== leftValue);
+    console.assert(got !== Left.leftValue);
     // Test that it's the wrapped left value.
     console.assert(got.leftValue === true);
 
     // Sanity check
-    console.assert(wrappedRightSide.rightValue[wrappedRightSide.rightPriv] === leftValue);
+    console.assert(wrappedRightSide.rightValue[wrappedRightSide.rightPriv] === Left.leftValue);
 }
 
 {
     console.log('### bP[fP] = vP;')
     const {
         Left,
-        leftValue,
-        leftPriv,
         Right,
-        rightValue,
-        rightPriv,
         wrappedLeftSide,
         wrappedRightSide,
     } = setup();
     wrappedRightSide.rightValue[wrappedRightSide.rightPriv] = wrappedRightSide.rightValue;
 
-    const got = rightValue[rightPriv];
+    const got = Right.rightValue[Right.rightPriv];
     // Test that it's unwrapped.
-    console.assert(got === rightValue);
+    console.assert(got === Right.rightValue);
 
     // Sanity check
     console.assert(wrappedRightSide.rightValue[wrappedRightSide.rightPriv] === wrappedRightSide.rightValue);
