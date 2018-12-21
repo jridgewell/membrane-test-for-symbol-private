@@ -33,6 +33,30 @@ function createWrapFn(originalsToProxies, proxiesToOriginals, originals, proxies
         return wrap(proxy, proxiesToOriginals, originalsToProxies, proxies, originals);
     }
 
+    const whitelist = new Set();
+    const originalToTargets = new WeakMap();
+
+    /**
+     * @param {symbol} privateSymbol
+     * @param {WeakMap<object, any>} originalsToProxies
+     * @param {WeakMap<object, any>} proxiesToOriginals
+     * @param {Set<any>} originals
+     * @param {Set<any>} proxies
+     */
+    function handlePrivates(privateSymbol, originalsToProxies, proxiesToOriginals, originals, proxies) {
+        if (whitelist.has(privateSymbol)) {
+            return;
+        }
+        whitelist.add(privateSymbol);
+        proxies.forEach(original => {
+            const target = originalToTargets.get(original);
+            if (!target.hasOwnProperty(privateSymbol)) {
+                return;
+            }
+            original[privateSymbol] = wrap(target[privateSymbol], originalsToProxies, proxiesToOriginals, originals, proxies);
+        });
+    }
+
     /**
      * @param {object | Function} original
      * @param {WeakMap<object, any>} originalsToProxies
@@ -54,7 +78,7 @@ function createWrapFn(originalsToProxies, proxiesToOriginals, originals, proxies
         // we use `newProxy` instead of `new Proxy` to emulate behavior of `Symbol.private`
         //       note that we don't use `original` here as proxy target
         //                     ↓↓↓↓↓↓↓↓↓↓↓↓↓↓
-        const proxy = new Proxy(shadowTarget, {
+        const proxy = newProxy(shadowTarget, {
             apply(target, thisArg, argArray) {
                 thisArg = unwrap(thisArg, originalsToProxies, proxiesToOriginals, originals, proxies);
                 for (let i = 0; i < argArray.length; i++) {
@@ -67,6 +91,10 @@ function createWrapFn(originalsToProxies, proxiesToOriginals, originals, proxies
                 //                           ↓↓↓↓↓↓↓↓
                 const retval = Reflect.apply(original, thisArg, argArray);
 
+                if (typeof retval === 'symbol' /* && retval.private */) {
+                    handlePrivates(retval, originalsToProxies, proxiesToOriginals, originals, proxies);
+                }
+
                 return unwrap(retval, originalsToProxies, proxiesToOriginals, originals, proxies);
             },
             get(target, p, receiver) {
@@ -74,6 +102,10 @@ function createWrapFn(originalsToProxies, proxiesToOriginals, originals, proxies
                 //       but we use `original` here instead of `target`
                 //                         ↓↓↓↓↓↓↓↓
                 const retval = Reflect.get(original, p, receiver);
+
+                if (typeof retval === 'symbol' /* && retval.private */) {
+                    handlePrivates(retval, originalsToProxies, proxiesToOriginals, originals, proxies);
+                }
 
                 return unwrap(retval, originalsToProxies, proxiesToOriginals, originals, proxies);
             },
@@ -98,8 +130,10 @@ function createWrapFn(originalsToProxies, proxiesToOriginals, originals, proxies
             // enumerate(target) { },
             // ownKeys(target) { },
             // construct(target, argArray, newTarget) { },
-        });
+        }, whitelist);
 
+        originals.add(original);
+        originalToTargets.set(original, shadowTarget);
         originalsToProxies.set(original, proxy);
         proxiesToOriginals.set(proxy, original);
 
