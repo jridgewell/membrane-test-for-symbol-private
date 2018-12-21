@@ -1,15 +1,16 @@
 /**
  * @param {any} obj
  * @param {ProxyHandler} handler
+ * @param {Set<symbol>} whitelist
  */
-function TransparentProxy(obj, handler) {
+function TransparentProxy(obj, handler, whitelist) {
   function isPrivateSymbol(sym) {
     return typeof sym === 'symbol' && !!sym.private;
   }
 
   function trap(handler, name) {
     return function(target, key, ...args) {
-      if (isPrivateSymbol(key)) {
+      if (isPrivateSymbol(key) && !whitelist.has(key)) {
         return Reflect[name](target, key, ...args);
       }
 
