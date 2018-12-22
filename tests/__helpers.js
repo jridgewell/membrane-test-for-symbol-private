@@ -2,7 +2,7 @@ const { Membrane } = require('..');
 const assert = require('assert');
 require('./__polyfill');
 
-function setup(leftField, rightField) {
+function setup(leftField, rightField, useShadowTargets) {
   const Left = {
     base: {},
     field: leftField,
@@ -30,7 +30,7 @@ function setup(leftField, rightField) {
   }
 
   const graph = {};
-  const wrappedGraph = new Membrane(graph);
+  const wrappedGraph = new Membrane(graph, useShadowTargets);
   graph.Left = Left;
   wrappedGraph.Right = Right;
 
@@ -45,28 +45,31 @@ function setup(leftField, rightField) {
   };
 }
 
-exports.stringFields = function() {
-  return setup('leftField', 'rightField');
+exports.stringFields = function(useShadowTargets) {
+  return () => setup('leftField', 'rightField', useShadowTargets);
 }
 
-exports.symbolFields = function() {
-  return setup(Symbol('leftField'), Symbol('rightField'));
+exports.symbolFields = function(useShadowTargets) {
+  return () => setup(Symbol('leftField'), Symbol('rightField'), useShadowTargets);
 }
 
-exports.privateSymbolFields = function() {
-  return setup(Symbol.private('leftField'), Symbol.private('rightField'));
+exports.privateSymbolFields = function(useShadowTargets) {
+  return () => setup(Symbol.private('leftField'), Symbol.private('rightField'), useShadowTargets);
 }
 
-exports.preExposedPrivateSymbolFields = function() {
-  const membrane = setup(Symbol.private('leftField'), Symbol.private('rightField'));
-  // Expose the fields before the tests.
-  membrane.wrappedLeftSide.field;
-  membrane.wrappedRightSide.field;
-  return membrane;
+exports.preExposedPrivateSymbolFields = function(useShadowTargets) {
+  return () => {
+    const membrane = setup(Symbol.private('leftField'), Symbol.private('rightField'), useShadowTargets);
+    // Expose the fields before the tests.
+    membrane.wrappedLeftSide.field;
+    membrane.wrappedRightSide.field;
+    return membrane;
+  }
 }
 
 exports.suite = function(setup, set, get) {
   it('bT[fT] = vT;', () => {
+    debugger;
     const {
       Left,
       Right,

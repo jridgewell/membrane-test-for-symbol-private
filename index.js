@@ -13,8 +13,9 @@ function isPrimitive(obj) {
 }
 
 /**
+ * @param {boolean} useShadowTargets
  */
-function createWrapFn() {
+function createWrapFn(useShadowTargets) {
   const originalsToProxies = new WeakMap();
   const proxiesToOriginals = new WeakMap();
   /**
@@ -33,10 +34,14 @@ function createWrapFn() {
    * @param {proxy} proxy
    * @param {Set<any>} originals
    * @param {Set<any>} proxies
+   * @param {boolean=} sameGraph
    */
-  function unwrap(proxy, originals, proxies) {
+  function unwrap(proxy, originals, proxies, sameGraph) {
     if (proxiesToOriginals.has(proxy)) {
       return proxiesToOriginals.get(proxy);
+    }
+    if (sameGraph) {
+      return wrap(proxy, originals, proxies);
     }
     return wrap(proxy, proxies, originals);
   }
@@ -72,11 +77,11 @@ function createWrapFn() {
     if (originalsToProxies.has(original)) return originalsToProxies.get(original);
     // if it's a proxied value, that means we're unwrapping it
     if (proxiesToOriginals.has(original)) return proxiesToOriginals.get(original);
-    const shadowTarget = typeof original === 'function'
-      ? () => { }
-      : {};
+    const target = useShadowTargets
+      ? typeof original === 'function' ? () => {} : {}
+      : original;
 
-    const proxy = new TransparentProxy(shadowTarget, {
+    const proxy = new TransparentProxy(target, {
       apply(target, thisArg, argArray) {
         thisArg = unwrap(thisArg, originals, proxies);
         for (let i = 0; i < argArray.length; i++) {
@@ -90,7 +95,8 @@ function createWrapFn() {
           handlePrivates(retval, originals, proxies);
         }
 
-        return unwrap(retval, originals, proxies);
+        // The retval is guaranteed to be in the same object graph as the target
+        return unwrap(retval, originals, proxies, /* sameGraph */ true);
       },
       get(target, p, receiver) {
         receiver = unwrap(receiver, originals, proxies);
@@ -100,7 +106,8 @@ function createWrapFn() {
           handlePrivates(retval, originals, proxies);
         }
 
-        return unwrap(retval, originals, proxies);
+        // The retval is guaranteed to be in the same object graph as the target
+        return unwrap(retval, originals, proxies, /* sameGraph */ true);
       },
       set(target, p, value, receiver) {
         value = unwrap(value, originals, proxies);
@@ -110,7 +117,7 @@ function createWrapFn() {
     }, whitelist);
 
     originals.add(original);
-    originalToTargets.set(original, shadowTarget);
+    originalToTargets.set(original, target);
     originalsToProxies.set(original, proxy);
     proxiesToOriginals.set(proxy, original);
 
@@ -122,9 +129,10 @@ function createWrapFn() {
 
 /**
  * @param {any} graph
+ * @param {boolean=} useShadowTargets
  */
-function Membrane(graph) {
-  const wrap = createWrapFn();
+function Membrane(graph, useShadowTargets) {
+  const wrap = createWrapFn(!!useShadowTargets);
   return wrap(graph, new Set(), new Set());
 }
 
