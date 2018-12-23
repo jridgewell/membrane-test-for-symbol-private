@@ -51,17 +51,18 @@ function createWrapFn(useShadowTargets) {
    * @param {Set<any>} originals
    * @param {Set<any>} proxies
    */
-  function handlePrivates(privateSymbol, originals, proxies) {
-    if (whitelist.has(privateSymbol)) {
+  function handlePrivates(sym, mines, others) {
+    if (whitelist.has(sym)) {
       return;
     }
-    whitelist.add(privateSymbol);
-    proxies.forEach(original => {
+    whitelist.add(sym);
+
+    others.forEach(original => {
       const target = originalToTargets.get(original);
-      if (!target.hasOwnProperty(privateSymbol)) {
-        return;
+      if (target.hasOwnProperty(sym)) {
+        // The data is guaranteed to be from the same object graph.
+        original[sym] = wrap(target[sym], mines, others, true);
       }
-      original[privateSymbol] = wrap(target[privateSymbol], originals, proxies);
     });
   }
 
