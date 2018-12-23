@@ -9,18 +9,23 @@ function isPrimitive(obj) {
     || typeof obj === 'boolean'
     || typeof obj === 'number'
     || typeof obj === 'string'
-    || typeof obj === 'symbol'; // for simplicity let's treat symbols as primitives
+    || typeof obj === 'symbol';
 }
 
 /**
  * @param {boolean} useShadowTargets
  */
 function createWrapFn(useShadowTargets) {
+  /**
+   * Mappings from original objects (in either graph) to the already created
+   * proxy, and back again.
+   */
   const originalsToProxies = new WeakMap();
   const proxiesToOriginals = new WeakMap();
+
   /**
    * Whitelist holds the known private symbols that have been exposed to the
-   * membrane.
+   * membrane. These then become trappable by the transparent proxy.
    */
   const whitelist = new Set();
 
@@ -31,25 +36,40 @@ function createWrapFn(useShadowTargets) {
   const originalToTargets = new WeakMap();
 
   /**
-   * @param {proxy} proxy
-   * @param {Set<any>} originals
-   * @param {Set<any>} proxies
+   * An object is crossing the membrane. It either needs to be wrapped, or
+   * unwrapped.
+   * @param {any} obj
+   * @param {Set<any>} mines
+   * @param {Set<any>} others
    * @param {boolean=} sameGraph
    */
-  function unwrap(proxy, originals, proxies, sameGraph) {
-    if (proxiesToOriginals.has(proxy)) {
-      return proxiesToOriginals.get(proxy);
+  function crossMembrane(obj, mines, others, sameGraph) {
+    // We don't need to wrap any primitive values.
+    if (isPrimitive(obj)) return obj;
+
+    // If the object is a proxy, that means it's being pushed back into its
+    // original object graph.
+    if (proxiesToOriginals.has(obj)) {
+      return proxiesToOriginals.get(obj);
     }
+
+    // Else, we're exposing a new object to the membrane. We must then
+    // determine if the object is originating from the same object graph that
+    // the outer proxy's target (return values from get/apply operations) or
+    // if it's being exposed from the other object graph.
     if (sameGraph) {
-      return wrap(proxy, originals, proxies);
+      return wrap(obj, mines, others);
     }
-    return wrap(proxy, proxies, originals);
+    return wrap(obj, others, mines);
   }
 
   /**
-   * @param {symbol} privateSymbol
-   * @param {Set<any>} originals
-   * @param {Set<any>} proxies
+   * A private symbol is being exposed to the other side. Check every
+   * object that has been exposed to this side to see if it had data
+   * transparently set on it.
+   * @param {symbol} sym
+   * @param {Set<any>} mines
+   * @param {Set<any>} others
    */
   function handlePrivates(sym, mines, others) {
     if (whitelist.has(sym)) {
@@ -61,63 +81,73 @@ function createWrapFn(useShadowTargets) {
       const target = originalToTargets.get(original);
       if (target.hasOwnProperty(sym)) {
         // The data is guaranteed to be from the same object graph.
-        original[sym] = wrap(target[sym], mines, others, true);
+        original[sym] = crossMembrane(target[sym], mines, others, true);
       }
     });
   }
 
   /**
-   * @param {object | Function} original
-   * @param {Set<any>} originals
-   * @param {Set<any>} proxies
+   * Wraps the object in a new membrane proxy.
+   * Mines is a set of objects exposed through the membrane that belong to the
+   * same object graph as the object. Others contains the other sides objects.
+   * @param {any} original
+   * @param {Set<any>} mines
+   * @param {Set<any>} others
    */
-  function wrap(original, originals, proxies) {
-    // we don't need to wrap any primitive values
+  function wrap(original, mines, others) {
+    // We don't need to wrap any primitive values.
     if (isPrimitive(original)) return original;
-    // we also don't need to wrap already wrapped values
+
+    // Reuse an already created proxy (to maintain object identity on the other
+    // side).
     if (originalsToProxies.has(original)) return originalsToProxies.get(original);
-    // if it's a proxied value, that means we're unwrapping it
-    if (proxiesToOriginals.has(original)) return proxiesToOriginals.get(original);
+
+    // Shadow targets are currently used by other Membrane implementations.
     const target = useShadowTargets
       ? typeof original === 'function' ? () => {} : {}
       : original;
 
     const proxy = new TransparentProxy(target, {
       apply(target, thisArg, argArray) {
-        thisArg = unwrap(thisArg, originals, proxies);
+        thisArg = crossMembrane(thisArg, mines, others);
         for (let i = 0; i < argArray.length; i++) {
-          if (!isPrimitive(argArray[i])) {
-            argArray[i] = unwrap(argArray[i], originals, proxies);
-          }
+          argArray[i] = crossMembrane(argArray[i], mines, others);
         }
         const retval = Reflect.apply(original, thisArg, argArray);
 
         if (typeof retval === 'symbol' && retval.private) {
-          handlePrivates(retval, originals, proxies);
+          // A private symbol is being exposed to the other side.
+          handlePrivates(retval, mines, others);
         }
 
-        // The retval is guaranteed to be in the same object graph as the target
-        return unwrap(retval, originals, proxies, /* sameGraph */ true);
+        // The retval is guaranteed to be from the same object graph as the
+        // target.
+        return crossMembrane(retval, mines, others, /* sameGraph */ true);
       },
+
       get(target, p, receiver) {
-        receiver = unwrap(receiver, originals, proxies);
+        receiver = crossMembrane(receiver, mines, others);
         const retval = Reflect.get(original, p, receiver);
 
         if (typeof retval === 'symbol' && retval.private) {
-          handlePrivates(retval, originals, proxies);
+          // A private symbol is being exposed to the other side.
+          handlePrivates(retval, mines, others);
         }
 
-        // The retval is guaranteed to be in the same object graph as the target
-        return unwrap(retval, originals, proxies, /* sameGraph */ true);
+        // The retval is guaranteed to be from the same object graph as the
+        // target.
+        return crossMembrane(retval, mines, others, /* sameGraph */ true);
       },
+
       set(target, p, value, receiver) {
-        value = unwrap(value, originals, proxies);
-        receiver = unwrap(receiver, originals, proxies);
+        value = crossMembrane(value, mines, others);
+        receiver = crossMembrane(receiver, mines, others);
+
         return Reflect.set(original, p, value, receiver);
       },
     }, whitelist);
 
-    originals.add(original);
+    mines.add(original);
     originalToTargets.set(original, target);
     originalsToProxies.set(original, proxy);
     proxiesToOriginals.set(proxy, original);
