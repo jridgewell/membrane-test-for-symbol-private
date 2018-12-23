@@ -33,7 +33,7 @@ function createWrapFn(useShadowTargets) {
    * We also need a mapping from the original object to its shadow target, so
    * we can copy the transparently-placed data to the original.
    */
-  const originalToTargets = new WeakMap();
+  const originalsToTargets = new WeakMap();
 
   /**
    * An object is crossing the membrane. It either needs to be wrapped, or
@@ -78,7 +78,7 @@ function createWrapFn(useShadowTargets) {
     whitelist.add(sym);
 
     others.forEach(original => {
-      const target = originalToTargets.get(original);
+      const target = originalsToTargets.get(original);
       if (target.hasOwnProperty(sym)) {
         // The data is guaranteed to be from the same object graph.
         original[sym] = crossMembrane(target[sym], mines, others, true);
@@ -125,9 +125,9 @@ function createWrapFn(useShadowTargets) {
         return crossMembrane(retval, mines, others, /* sameGraph */ true);
       },
 
-      get(target, p, receiver) {
+      get(target, key, receiver) {
         receiver = crossMembrane(receiver, mines, others);
-        const retval = Reflect.get(original, p, receiver);
+        const retval = Reflect.get(original, key, receiver);
 
         if (typeof retval === 'symbol' && retval.private) {
           // A private symbol is being exposed to the other side.
@@ -139,16 +139,16 @@ function createWrapFn(useShadowTargets) {
         return crossMembrane(retval, mines, others, /* sameGraph */ true);
       },
 
-      set(target, p, value, receiver) {
+      set(target, key, value, receiver) {
         value = crossMembrane(value, mines, others);
         receiver = crossMembrane(receiver, mines, others);
 
-        return Reflect.set(original, p, value, receiver);
+        return Reflect.set(original, key, value, receiver);
       },
     }, whitelist);
 
     mines.add(original);
-    originalToTargets.set(original, target);
+    originalsToTargets.set(original, target);
     originalsToProxies.set(original, proxy);
     proxiesToOriginals.set(proxy, original);
 

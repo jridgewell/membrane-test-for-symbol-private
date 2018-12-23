@@ -69,7 +69,6 @@ exports.preExposedPrivateSymbolFields = function(useShadowTargets) {
 
 exports.suite = function(setup, set, get) {
   it('bT[fT] = vT;', () => {
-    debugger;
     const {
       Left,
       Right,
