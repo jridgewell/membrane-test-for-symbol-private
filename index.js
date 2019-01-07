@@ -37,13 +37,18 @@ function createWrapFn(useShadowTargets) {
 
   /**
    * An object is crossing the membrane. It either needs to be wrapped, or
-   * unwrapped.
+   * unwrapped. Mines is the object graph that obj belongs to, and others the
+   * other object graph.
    * @param {any} obj
    * @param {Set<any>} mines
    * @param {Set<any>} others
-   * @param {boolean=} sameGraph
    */
-  function crossMembrane(obj, mines, others, sameGraph) {
+  function crossMembrane(obj, mines, others) {
+    if (typeof obj === 'symbol' && obj.private) {
+      // A private symbol is being exposed to the other side.
+      handlePrivates(obj, mines, others);
+    }
+
     // We don't need to wrap any primitive values.
     if (isPrimitive(obj)) return obj;
 
@@ -57,10 +62,7 @@ function createWrapFn(useShadowTargets) {
     // determine if the object is originating from the same object graph that
     // the outer proxy's target (return values from get/apply operations) or
     // if it's being exposed from the other object graph.
-    if (sameGraph) {
-      return wrap(obj, mines, others);
-    }
-    return wrap(obj, others, mines);
+    return wrap(obj, mines, others);
   }
 
   /**
@@ -81,7 +83,7 @@ function createWrapFn(useShadowTargets) {
       const target = originalsToTargets.get(original);
       if (target.hasOwnProperty(sym)) {
         // The data is guaranteed to be from the same object graph.
-        original[sym] = crossMembrane(target[sym], mines, others, true);
+        original[sym] = crossMembrane(target[sym], mines, others);
       }
     });
   }
@@ -109,39 +111,32 @@ function createWrapFn(useShadowTargets) {
 
     const proxy = new TransparentProxy(target, {
       apply(target, thisArg, argArray) {
-        thisArg = crossMembrane(thisArg, mines, others);
+        // The thisArg is guaranteed to be from the other object graph.
+        thisArg = crossMembrane(thisArg, others, mines);
         for (let i = 0; i < argArray.length; i++) {
-          argArray[i] = crossMembrane(argArray[i], mines, others);
+          // The arg is guaranteed to be from the other object graph.
+          argArray[i] = crossMembrane(argArray[i], others, mines);
         }
         const retval = Reflect.apply(original, thisArg, argArray);
 
-        if (typeof retval === 'symbol' && retval.private) {
-          // A private symbol is being exposed to the other side.
-          handlePrivates(retval, mines, others);
-        }
-
-        // The retval is guaranteed to be from the same object graph as the
-        // target.
-        return crossMembrane(retval, mines, others, /* sameGraph */ true);
+        // The retval is guaranteed to be from the same object graph.
+        return crossMembrane(retval, mines, others);
       },
 
       get(target, key, receiver) {
-        receiver = crossMembrane(receiver, mines, others);
+        // The receiver is guaranteed to be from the other object graph.
+        receiver = crossMembrane(receiver, others, mines);
         const retval = Reflect.get(original, key, receiver);
 
-        if (typeof retval === 'symbol' && retval.private) {
-          // A private symbol is being exposed to the other side.
-          handlePrivates(retval, mines, others);
-        }
-
-        // The retval is guaranteed to be from the same object graph as the
-        // target.
-        return crossMembrane(retval, mines, others, /* sameGraph */ true);
+        // The retval is guaranteed to be from the same object graph.
+        return crossMembrane(retval, mines, others);
       },
 
       set(target, key, value, receiver) {
-        value = crossMembrane(value, mines, others);
-        receiver = crossMembrane(receiver, mines, others);
+        // The value is guaranteed to be from the other object graph.
+        value = crossMembrane(value, others, mines);
+        // The receiver is guaranteed to be from the other object graph.
+        receiver = crossMembrane(receiver, others, mines);
 
         return Reflect.set(original, key, value, receiver);
       },
