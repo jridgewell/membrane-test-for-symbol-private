@@ -25,7 +25,10 @@ describe('Membranes', () => {
 
     describe('Reified key based access', () => {
       const set = (Side, base, value) => {
-        base[Side.field] = value;
+        // This makes 4 of the 8 tests redundant (pRight.field becomes known
+        // too early).
+        // base[Side.field] = value;
+        Side.set(base, value);
       };
       const get = (Side, base) => {
         return base[Side.field];
@@ -74,7 +77,10 @@ describe('Membranes', () => {
 
     describe('Reified key based access', () => {
       const set = (Side, base, value) => {
-        base[Side.field] = value;
+        // This makes 4 of the 8 tests redundant (pRight.field becomes known
+        // too early).
+        // base[Side.field] = value;
+        Side.set(base, value);
       };
       const get = (Side, base) => {
         return base[Side.field];
