@@ -34,4 +34,69 @@ function TransparentProxy(obj, handler, whitelist) {
   });
 }
 
+function ShadowTarget(original) {
+  const target = Array.isArray(original)
+    ? []
+    : typeof original === 'function'
+      ? () => {}
+      : {}
+  // Object.freeze(target);
+
+  return new Proxy(target, {
+    // For example only.
+    get(target, key, receiver) {
+      if (key === '__shadow_original__') return original;
+      if (key === '__shadow_target__') return target;
+
+      return Reflect.get(original, key, receiver);
+    },
+
+    set(target, key, value, receiver) {
+      return Reflect.set(original, key, value, receiver);
+    },
+
+    // Other handler traps.
+    construct(target, argArray, newTarget) {
+      return Reflect.construct(original, argArray, newTarget);
+    },
+
+    defineProperty(target, p, desc) {
+      return Reflect.defineProperty(original, p, desc);
+    },
+
+    deleteProperty(target, p) {
+      return Reflect.deleteProperty(original, p);
+    },
+
+    getOwnPropertyDescriptor(target, p) {
+      return Reflect.getOwnPropertyDescriptor(original, p);
+    },
+
+    getPrototypeOf(target) {
+      return Reflect.getPrototypeOf(original);
+    },
+
+    has(target, p) {
+      return Reflect.has(original, p);
+    },
+
+    isExtensible(target) {
+      return Reflect.isExtensible(original);
+    },
+
+    ownKeys(target) {
+      return Reflect.ownKeys(original);
+    },
+
+    preventExtensions(target) {
+      return Reflect.preventExtensions(original);
+    },
+
+    setPrototypeOf(target, proto) {
+      return Reflect.setPrototypeOf(original, proto);
+    },
+  });
+}
+
+exports.ShadowTarget = ShadowTarget;
 exports.TransparentProxy = TransparentProxy;

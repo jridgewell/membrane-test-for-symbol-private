@@ -1,4 +1,4 @@
-const { TransparentProxy } = require('./transparent-proxy');
+const { ShadowTarget, TransparentProxy } = require('./transparent-proxy');
 
 /**
  * @param {any} obj
@@ -81,11 +81,11 @@ function createWrapFn(useShadowTargets) {
 
     others.forEach(original => {
       const target = originalsToTargets.get(original);
-      if (target.hasOwnProperty(sym)) {
-        let desc = Reflect.getOwnPropertyDescriptor(target, sym);
+      const desc = Reflect.getOwnPropertyDescriptor(target, sym);
+      if (desc) {
         // The desc is guaranteed to be from the same object graph.
-        desc = crossMembrane(desc, mines, others);
-        Object.defineProperty(original, sym, desc);
+        const crossed = crossMembrane(desc, mines, others);
+        Reflect.defineProperty(original, sym, crossed);
       }
     });
   }
@@ -107,9 +107,7 @@ function createWrapFn(useShadowTargets) {
     if (originalsToProxies.has(original)) return originalsToProxies.get(original);
 
     // Shadow targets are currently used by other Membrane implementations.
-    const target = useShadowTargets
-      ? typeof original === 'function' ? () => {} : {}
-      : original;
+    const target = useShadowTargets ? new ShadowTarget(original) : original;
 
     const proxy = new TransparentProxy(target, {
       apply(target, thisArg, argArray) {
@@ -126,6 +124,10 @@ function createWrapFn(useShadowTargets) {
       },
 
       get(target, key, receiver) {
+        // For debugging.
+        if (key === '__original__') return original;
+        if (key === '__target__') return target;
+
         // The receiver is guaranteed to be from the other object graph.
         receiver = crossMembrane(receiver, others, mines);
         const retval = Reflect.get(original, key, receiver);
@@ -143,38 +145,7 @@ function createWrapFn(useShadowTargets) {
         return Reflect.set(original, key, value, receiver);
       },
 
-      // Other handler traps.
-      construct(target, argArray, newTarget) {
-        // The newTarget is guaranteed to be from the other object graph.
-        newTarget = crossMembrane(newTarget, others, mines);
-        for (let i = 0; i < argArray.length; i++) {
-          // The arg is guaranteed to be from the other object graph.
-          argArray[i] = crossMembrane(argArray[i], others, mines);
-        }
-        const retval = Reflect.construct(original, argArray, newTarget);
-
-        // The retval is guaranteed to be from the same object graph.
-        return crossMembrane(retval, mines, others);
-      },
-
-      defineProperty(target, p, desc) {
-        // The desc is guaranteed to be from the other object graph.
-        desc = crossMembrane(desc, others, mines);
-
-        return Reflect.defineProperty(original, p, desc);
-      },
-
-      deleteProperty(target, p) {
-        return Reflect.deleteProperty(original, p);
-      },
-
-      getOwnPropertyDescriptor(target, p) {
-        const desc = Reflect.getOwnPropertyDescriptor(original, p);
-
-        // The desc is guaranteed to be from the same object graph.
-        return crossMembrane(desc, mines, others);
-      },
-
+      // Necessary for prototype inheritance tests
       getPrototypeOf(target) {
         const proto = Reflect.getPrototypeOf(original);
 
@@ -182,27 +153,16 @@ function createWrapFn(useShadowTargets) {
         return crossMembrane(proto, mines, others);
       },
 
-      has(target, p) {
-        return Reflect.has(original, p);
-      },
-
-      isExtensible(target) {
-        return Reflect.isExtensible(original);
-      },
-
-      ownKeys(target) {
-        return Reflect.ownKeys(original);
-      },
-
-      preventExtensions(target) {
-        return Reflect.preventExtensions(original);
-      },
-
       setPrototypeOf(target, proto) {
         // The proto is guaranteed to be from the other object graph.
         proto = crossMembrane(proto, others, mines);
 
         return Reflect.setPrototypeOf(original, proto);
+      },
+
+      // Necessary for cross-membrane descriptor wrapping
+      has(target, p) {
+        return Reflect.has(original, p);
       },
     }, whitelist);
 

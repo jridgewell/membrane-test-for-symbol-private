@@ -3,13 +3,13 @@ const assert = require('assert');
 require('./tests/__polyfill');
 
 const leftField = Symbol.private('leftField');
-const otherField = Symbol.private('otherField');
 const rightField = Symbol.private('rightField');
 
 const Left = {
-  base: {},
+  base: { leftBase: true },
+  proto: { leftProto: true },
+  value: { leftValue: true },
   field: leftField,
-  value: { fromTheLeft: true },
 
   get(obj) {
     return obj[leftField];
@@ -20,9 +20,10 @@ const Left = {
 };
 
 const Right = {
-  base: {},
-  field: rightField,
-  value: { fromTheRight: true },
+  base: { leftBase: true },
+  proto: { leftProto: true },
+  value: { leftValue: true },
+  field: leftField,
 
   get(obj) {
     return obj[rightField];
@@ -37,15 +38,15 @@ const wrappedGraph = new Membrane(graph, true);
 graph.Left = Left;
 wrappedGraph.Right = Right;
 
-const wrappedLeftSide = wrappedGraph.Left;
-const wrappedRightSide = graph.Right;
+const pLeft = wrappedGraph.Left;
+const pRight = graph.Right;
 
 
-wrappedRightSide.base[Left.field] = otherField;
-wrappedRightSide.base[otherField] = Left.value;
+Reflect.setPrototypeOf(Left.base, Left.proto);
+Left.proto[Left.field] = Left.value;
 
-// Pull it through
-debugger;
-console.assert(Right.base[wrappedLeftSide.field] === otherField);
-console.assert(Right.base[otherField].fromTheLeft);
+console.assert(pLeft.get(pLeft.proto) === pLeft.value);
+console.assert(pLeft.get(pLeft.base) === pLeft.value);
+console.assert(pLeft.proto[pLeft.field] === pLeft.value);
+console.assert(pLeft.base[pLeft.field] === pLeft.value);
 
