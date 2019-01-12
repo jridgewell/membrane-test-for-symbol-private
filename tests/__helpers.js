@@ -89,10 +89,8 @@ exports.suite = function(setup, set, get) {
 
       const got = get(pLeft, pLeft.base);
 
-      // Test that it's wrapped.
-      assert.notStrictEqual(got, Left.value);
       // Test that it's the wrapped left value.
-      assert.strictEqual(got.fromTheLeft, true);
+      assert.strictEqual(got.__original__, Left.value);
       // Sanity check.
       assert.strictEqual(get(Left, Left.base), Left.value);
     }
@@ -130,8 +128,6 @@ exports.suite = function(setup, set, get) {
 
       // Test that it's unwrapped.
       assert.strictEqual(got, Right.value);
-      // Test that it was the wrapped right value.
-      assert.strictEqual(pRight.value.fromTheRight, true);
       // Sanity check.
       assert.strictEqual(get(Left, Left.base), pRight.value);
     }
@@ -167,10 +163,8 @@ exports.suite = function(setup, set, get) {
 
       const got = get(Right, pLeft.base);
 
-      // Test that it's wrapped.
-      assert.notStrictEqual(got, Left.value);
       // Test that it's the wrapped left value.
-      assert.strictEqual(got.fromTheLeft, true);
+      assert.strictEqual(got.__original__, Left.value);
       // Sanity check.
       assert.strictEqual(get(pRight, Left.base), Left.value);
     }
@@ -205,10 +199,9 @@ exports.suite = function(setup, set, get) {
       }
 
       const got = get(Right, pLeft.base);
+
       // Test that it's unwrapped.
       assert.strictEqual(got, Right.value);
-      // Test that it was the wrapped right value.
-      assert.strictEqual(pRight.value.fromTheRight, true);
       // Sanity check.
       assert.strictEqual(get(pRight, Left.base), pRight.value);
     }
@@ -243,10 +236,9 @@ exports.suite = function(setup, set, get) {
       }
 
       const got = get(pLeft, Right.base);
-      // Test that it's wrapped.
-      assert.notStrictEqual(got, Left.value);
+
       // Test that it's the wrapped left value.
-      assert.strictEqual(got.fromTheLeft, true);
+      assert.strictEqual(got.__original__, Left.value);
       // Sanity check.
       assert.strictEqual(get(Left, pRight.base), Left.value);
     }
@@ -281,10 +273,9 @@ exports.suite = function(setup, set, get) {
       }
 
       const got = get(pLeft, Right.base);
+
       // Test that it's unwrapped.
       assert.strictEqual(got, Right.value);
-      // Test that it was the wrapped right value.
-      assert.strictEqual(pRight.value.fromTheRight, true);
       // Sanity check.
       assert.strictEqual(get(Left, pRight.base), pRight.value);
     }
@@ -319,10 +310,9 @@ exports.suite = function(setup, set, get) {
       }
 
       const got = get(Right, Right.base);
-      // Test that it's wrapped.
-      assert.notStrictEqual(got, Left.value);
+
       // Test that it's the wrapped left value.
-      assert.strictEqual(got.fromTheLeft, true);
+      assert.strictEqual(got.__original__, Left.value);
       // Sanity check.
       assert.strictEqual(get(pRight, pRight.base), Left.value);
     }
@@ -357,10 +347,9 @@ exports.suite = function(setup, set, get) {
       }
 
       const got = get(Right, Right.base);
+
       // Test that it's unwrapped.
       assert.strictEqual(got, Right.value);
-      // Test that it was the wrapped right value.
-      assert.strictEqual(pRight.value.fromTheRight, true);
       // Sanity check.
       assert.strictEqual(get(pRight, pRight.base), pRight.value);
     }
