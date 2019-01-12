@@ -17,7 +17,6 @@ function setup(leftField, rightField, useShadowTargets) {
     },
   };
 
-  const rightProto = {};
   const Right = {
     base: {},
     proto: {},
@@ -75,14 +74,18 @@ exports.preExposedPrivateSymbolFields = function(useShadowTargets) {
 exports.suite = function(setup, set, get) {
   const setupBase = () => ({});
   describe('pLeft.base[pLeft.field] === pLeft.value', () => {
-    function test(state, setOn) {
+    function test(state, proto) {
       const {
         Left,
         Right,
         pLeft,
         pRight,
       } = state;
-      set(Left, setOn || Left.base, Left.value);
+      set(Left, proto || Left.base, Left.value);
+
+      if (proto) {
+        Reflect.setPrototypeOf(Left.base, proto);
+      }
 
       const got = get(pLeft, pLeft.base);
 
@@ -98,30 +101,30 @@ exports.suite = function(setup, set, get) {
       test(setup());
     });
 
-    it('Left.base -> Left.proto, Left.proto[Left.field] = Left.value', () => {
+    it('Left.proto[Left.field] = Left.value', () => {
       const state = setup();
-      const { Left } = state;
-      Reflect.setPrototypeOf(Left.base, Left.proto);
-      test(state, Left.proto);
+      test(state, state.Left.proto);
     });
 
     it('Left.base -> pRight.base, pRight.base[Left.field] = Left.value', () => {
       const state = setup();
-      const { Left, pRight } = state;
-      Reflect.setPrototypeOf(Left.base, pRight.base);
-      test(state, pRight.base);
+      test(state, state.pRight.base);
     });
   });
 
   describe('pLeft.base[pLeft.field] === Right.value', () => {
-    function test(state, setOn) {
+    function test(state, proto) {
       const {
         Left,
         Right,
         pLeft,
         pRight,
       } = state;
-      set(Left, setOn || Left.base, pRight.value);
+      set(Left, proto || Left.base, pRight.value);
+
+      if (proto) {
+        Reflect.setPrototypeOf(Left.base, proto);
+      }
 
       const got = get(pLeft, pLeft.base);
 
@@ -137,30 +140,30 @@ exports.suite = function(setup, set, get) {
       test(setup());
     });
 
-    it('Left.base -> Left.proto, Left.proto[Left.field] = pRight.value', () => {
+    it('Left.proto[Left.field] = pRight.value', () => {
       const state = setup();
-      const { Left } = state;
-      Reflect.setPrototypeOf(Left.base, Left.proto);
-      test(state, Left.proto);
+      test(state, state.Left.proto);
     });
 
     it('Left.base -> pRight.base, pRight.base[Left.field] = pRight.value', () => {
       const state = setup();
-      const { Left, pRight } = state;
-      Reflect.setPrototypeOf(Left.base, pRight.base);
-      test(state, pRight.base);
+      test(state, state.pRight.base);
     });
   });
 
   describe('pLeft.base[Right.field] === pLeft.value', () => {
-    function test(state, setOn) {
+    function test(state, proto) {
       const {
         Left,
         Right,
         pLeft,
         pRight,
       } = state;
-      set(pRight, setOn || Left.base, Left.value);
+      set(pRight, proto || Left.base, Left.value);
+
+      if (proto) {
+        Reflect.setPrototypeOf(Left.base, proto);
+      }
 
       const got = get(Right, pLeft.base);
 
@@ -176,30 +179,30 @@ exports.suite = function(setup, set, get) {
       test(setup());
     });
 
-    it('Left.base -> Left.proto, Left.proto[pRight.field] = Left.value', () => {
+    it('Left.proto[pRight.field] = Left.value', () => {
       const state = setup();
-      const { Left } = state;
-      Reflect.setPrototypeOf(Left.base, Left.proto);
-      test(state, Left.proto);
+      test(state, state.Left.proto);
     });
 
     it('Left.base -> pRight.base, pRight.base[pRight.field] = Left.value', () => {
       const state = setup();
-      const { Left, pRight } = state;
-      Reflect.setPrototypeOf(Left.base, pRight.base);
-      test(state, pRight.base);
+      test(state, state.pRight.base);
     });
   });
 
   describe('pLeft.base[Right.field] === Right.value', () => {
-    function test(state, setOn) {
+    function test(state, proto) {
       const {
         Left,
         Right,
         pLeft,
         pRight,
       } = state;
-      set(pRight, setOn || Left.base, pRight.value);
+      set(pRight, proto || Left.base, pRight.value);
+
+      if (proto) {
+        Reflect.setPrototypeOf(Left.base, proto);
+      }
 
       const got = get(Right, pLeft.base);
       // Test that it's unwrapped.
@@ -214,30 +217,30 @@ exports.suite = function(setup, set, get) {
       test(setup());
     });
 
-    it('Left.base -> Left.proto, Left.proto[pRight.field] = pRight.value', () => {
+    it('Left.proto[pRight.field] = pRight.value', () => {
       const state = setup();
-      const { Left } = state;
-      Reflect.setPrototypeOf(Left.base, Left.proto);
-      test(state, Left.proto);
+      test(state, state.Left.proto);
     });
 
     it('Left.base -> pRight.base, pRight.base[pRight.field] = pRight.value', () => {
       const state = setup();
-      const { Left, pRight } = state;
-      Reflect.setPrototypeOf(Left.base, pRight.base);
-      test(state, pRight.base);
+      test(state, state.pRight.base);
     });
   });
 
   describe('Right.base[pLeft.field] === pLeft.value', () => {
-    function test(state, setOn) {
+    function test(state, proto) {
       const {
         Left,
         Right,
         pLeft,
         pRight,
       } = state;
-      set(Left, setOn || pRight.base, Left.value);
+      set(Left, proto || pRight.base, Left.value);
+
+      if (proto) {
+        Reflect.setPrototypeOf(pRight.base, proto);
+      }
 
       const got = get(pLeft, Right.base);
       // Test that it's wrapped.
@@ -252,37 +255,30 @@ exports.suite = function(setup, set, get) {
       test(setup());
     });
 
-    it('pRight.base -> pRight.proto, pRight.proto[Left.field] = Left.value', () => {
+    it('pRight.proto[Left.field] = Left.value', () => {
       const state = setup();
-      const { pRight } = state;
-      Reflect.setPrototypeOf(pRight.base, pRight.proto);
-      test(state, pRight.proto);
+      test(state, state.pRight.proto);
     });
 
     it('pRight.base -> Left.base, Left.base[Left.field] = Left.value', () => {
       const state = setup();
-      const { Left, pRight } = state;
-      Reflect.setPrototypeOf(pRight.base, Left.base);
-      test(state, Left.base);
-    });
-
-    it('Right.base -> Right.proto, pRight.proto[Left.field] = Left.value', () => {
-      const state = setup();
-      const { Right, pRight } = state;
-      Reflect.setPrototypeOf(Right.base, Right.proto);
-      test(state, pRight.proto);
+      test(state, state.Left.base);
     });
   });
 
   describe('Right.base[pLeft.field] === Right.value', () => {
-    function test(state, setOn) {
+    function test(state, proto) {
       const {
         Left,
         Right,
         pLeft,
         pRight,
       } = state;
-      set(Left, setOn || pRight.base, pRight.value);
+      set(Left, proto || pRight.base, pRight.value);
+
+      if (proto) {
+        Reflect.setPrototypeOf(pRight.base, proto);
+      }
 
       const got = get(pLeft, Right.base);
       // Test that it's unwrapped.
@@ -297,37 +293,30 @@ exports.suite = function(setup, set, get) {
       test(setup());
     });
 
-    it('pRight.base -> pRight.proto, pRight.proto[Left.field] = pRight.value', () => {
+    it('pRight.proto[Left.field] = pRight.value', () => {
       const state = setup();
-      const { pRight } = state;
-      Reflect.setPrototypeOf(pRight.base, pRight.proto);
-      test(state, pRight.proto);
+      test(state, state.pRight.proto);
     });
 
     it('pRight.base -> Left.base, Left.base[Left.field] = pRight.value', () => {
       const state = setup();
-      const { Left, pRight } = state;
-      Reflect.setPrototypeOf(pRight.base, Left.base);
-      test(state, Left.base);
-    });
-
-    it('Right.base -> Right.proto, pRight.proto[Left.field] = pRight.value', () => {
-      const state = setup();
-      const { Right, pRight } = state;
-      Reflect.setPrototypeOf(Right.base, Right.proto);
-      test(state, pRight.proto);
+      test(state, state.Left.base);
     });
   });
 
   describe('Right.base[Right.field] === pLeft.value', () => {
-    function test(state, setOn) {
+    function test(state, proto) {
       const {
         Left,
         Right,
         pLeft,
         pRight,
       } = state;
-      set(pRight, setOn || pRight.base, Left.value);
+      set(pRight, proto || pRight.base, Left.value);
+
+      if (proto) {
+        Reflect.setPrototypeOf(pRight.base, proto);
+      }
 
       const got = get(Right, Right.base);
       // Test that it's wrapped.
@@ -342,37 +331,30 @@ exports.suite = function(setup, set, get) {
       test(setup());
     });
 
-    it('pRight.base -> pRight.proto, pRight.proto[pRight.field] = Left.value', () => {
+    it('pRight.proto[pRight.field] = Left.value', () => {
       const state = setup();
-      const { pRight } = state;
-      Reflect.setPrototypeOf(pRight.base, pRight.proto);
-      test(state, pRight.proto);
+      test(state, state.pRight.proto);
     });
 
     it('pRight.base -> Left.base, Left.base[pRight.field] = Left.value', () => {
       const state = setup();
-      const { Left, pRight } = state;
-      Reflect.setPrototypeOf(pRight.base, Left.base);
-      test(state, Left.base);
-    });
-
-    it('Right.base -> Right.proto, pRight.proto[pRight.field] = Left.value', () => {
-      const state = setup();
-      const { Right, pRight } = state;
-      Reflect.setPrototypeOf(Right.base, Right.proto);
-      test(state, pRight.proto);
+      test(state, state.Left.base);
     });
   });
 
   describe('Right.base[Right.field] === Right.value', () => {
-    function test(state, setOn) {
+    function test(state, proto) {
       const {
         Left,
         Right,
         pLeft,
         pRight,
       } = state;
-      set(pRight, setOn || pRight.base, pRight.value);
+      set(pRight, proto || pRight.base, pRight.value);
+
+      if (proto) {
+        Reflect.setPrototypeOf(pRight.base, proto);
+      }
 
       const got = get(Right, Right.base);
       // Test that it's unwrapped.
@@ -387,25 +369,14 @@ exports.suite = function(setup, set, get) {
       test(setup());
     });
 
-    it('pRight.base -> pRight.proto, pRight.proto[pRight.field] = pRight.value', () => {
+    it('pRight.proto[pRight.field] = pRight.value', () => {
       const state = setup();
-      const { pRight } = state;
-      Reflect.setPrototypeOf(pRight.base, pRight.proto);
-      test(state, pRight.proto);
+      test(state, state.pRight.proto);
     });
 
     it('pRight.base -> Left.base, Left.base[pRight.field] = pRight.value', () => {
       const state = setup();
-      const { Left, pRight } = state;
-      Reflect.setPrototypeOf(pRight.base, Left.base);
-      test(state, Left.base);
-    });
-
-    it('Right.base -> Right.proto, pRight.proto[pRight.field] = pRight.value', () => {
-      const state = setup();
-      const { Right, pRight } = state;
-      Reflect.setPrototypeOf(Right.base, Right.proto);
-      test(state, pRight.proto);
+      test(state, state.Left.base);
     });
   });
 };
