@@ -13,9 +13,16 @@ function isPrimitive(obj) {
 }
 
 /**
- * @param {boolean} useShadowTargets
+ * @param {!Object} options
  */
-function createWrapFn(useShadowTargets) {
+function createWrapFn({
+  syncWhenExposed = true,
+  useShadowTargets = true,
+  useShadowWrapper = true,
+  useWhitelistApi = true,
+  useBlockWrapper = false,
+  useBlockWrapperAllowOwn = false,
+}) {
   /**
    * Mappings from original objects (in either graph) to the already created
    * proxy, and back again.
@@ -28,6 +35,8 @@ function createWrapFn(useShadowTargets) {
    * membrane. These then become trappable by the transparent proxy.
    */
   const whitelist = new Set();
+  // If we don't use the proxy whitelist API, we need a brand new set.
+  const proxyWhitelist = useWhitelistApi ? whitelist : undefined;
 
   /**
    * We also need a mapping from the original object to its shadow target, so
@@ -75,6 +84,10 @@ function createWrapFn(useShadowTargets) {
    * @param {Set<any>} others
    */
   function handlePrivates(sym, mines, others) {
+    if (!syncWhenExposed) {
+      return;
+    }
+
     if (whitelist.has(sym)) {
       return;
     }
@@ -107,6 +120,10 @@ function createWrapFn(useShadowTargets) {
   // in-sync prototype chain in all circumstances) would not be able to
   // traverse the membrane's prototype.
   function ShadowWrapper(shadow) {
+    if (!useShadowWrapper && !useBlockWrapper && !useBlockWrapperAllowOwn) {
+      return shadow;
+    }
+
     const wrapper = new ProtoProxy(shadow, {
       getPrototypeOf(target) {
         const original = targetsToOriginals.get(wrapper);
@@ -114,8 +131,12 @@ function createWrapFn(useShadowTargets) {
         return Reflect.getPrototypeOf(proxy);
       },
 
+      // Could have a setPrototypeOf, but not necessary for tests.
       // setPrototypeOf(target) {
       // },
+    }, {
+      useBlockWrapper,
+      useBlockWrapperAllowOwn,
     });
 
     return wrapper;
@@ -197,7 +218,7 @@ function createWrapFn(useShadowTargets) {
       has(target, p) {
         return Reflect.has(original, p);
       },
-    }, whitelist);
+    }, proxyWhitelist);
 
     mines.add(original);
     originalsToTargets.set(original, target);
@@ -213,10 +234,10 @@ function createWrapFn(useShadowTargets) {
 
 /**
  * @param {any} graph
- * @param {boolean=} useShadowTargets
+ * @param {?Object} options
  */
-function Membrane(graph, useShadowTargets) {
-  const wrap = createWrapFn(!!useShadowTargets);
+function Membrane(graph, options = {}) {
+  const wrap = createWrapFn(options);
   return wrap(graph, new Set(), new Set());
 }
 

@@ -1,9 +1,9 @@
 /**
  * @param {any} obj
  * @param {ProxyHandler} handler
- * @param {Set<symbol>} whitelist
+ * @param {?Set<symbol>} whitelist
  */
-function TransparentProxy(obj, handler, whitelist) {
+function TransparentProxy(obj, handler, whitelist = new Set()) {
   function isPrivateSymbol(sym) {
     return typeof sym === 'symbol' && !!sym.private;
   }
@@ -47,13 +47,19 @@ function TransparentProxy(obj, handler, whitelist) {
 // For now, handler may only have getPrototypeOf and setPrototypeOf traps.
 // Nothing else will be used. If we decide to throw instead, there would be no
 // handler at all.
-function ProtoProxy(target, handler) {
+function ProtoProxy(target, handler, options = {}) {
   function isDataDescriptor(desc) {
     return 'value' in desc || 'writable' in desc;
   }
   function isAccessorDescriptor(desc) {
     return 'get' in desc || 'set' in desc;
   }
+
+  // This is a configuration option for testing, not actual API.
+  const {
+    useBlockWrapper,
+    useBlockWrapperAllowOwn,
+  } = options;
 
   // Notice that this an original proxy, not a transparent one. Imagine this as
   // new proxy exotic, able to receive all property keys (including private
@@ -71,6 +77,10 @@ function ProtoProxy(target, handler) {
       const desc = Reflect.getOwnPropertyDescriptor(target, key);
 
       if (desc === undefined) {
+        // This is a configuration option for testing, not actual API.
+        if (useBlockWrapper || useBlockWrapperAllowOwn) {
+          throw new Error('blocking get');
+        }
         const proto = Reflect.getPrototypeOf(proxy);
         if (proto === null) return undefined;
 
@@ -89,10 +99,16 @@ function ProtoProxy(target, handler) {
       let desc = Reflect.getOwnPropertyDescriptor(target, key);
 
       if (desc === undefined) {
+        // This is a configuration option for testing, not actual API.
+        if (!useBlockWrapperAllowOwn && useBlockWrapper) {
+          throw new Error('blocking set');
+        }
+
         const proto = Reflect.getPrototypeOf(proxy);
-        if (proto !== null) {
+        if (!useBlockWrapperAllowOwn && proto !== null) {
           return Reflect.set(proto, key, value, receiver);
         }
+
         desc = {
           value,
           writable: true,
@@ -124,6 +140,14 @@ function ProtoProxy(target, handler) {
     has(target, key) {
       if (Reflect.getOwnPropertyDescriptor(target, key)) {
         return true;
+      }
+
+      // This is a configuration option for testing, not actual API.
+      if (useBlockWrapperAllowOwn) {
+        return false;
+      }
+      if (useBlockWrapper) {
+        throw new Error('blocking has');
       }
 
       const proto = Reflect.getPrototypeOf(proxy);
