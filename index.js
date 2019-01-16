@@ -1,4 +1,4 @@
-const { ShadowTarget, TransparentProxy } = require('./transparent-proxy');
+const { ProtoProxy, TransparentProxy } = require('./transparent-proxy');
 
 /**
  * @param {any} obj
@@ -34,6 +34,7 @@ function createWrapFn(useShadowTargets) {
    * we can copy the transparently-placed data to the original.
    */
   const originalsToTargets = new WeakMap();
+  const targetsToOriginals = new WeakMap();
 
   /**
    * An object is crossing the membrane. It either needs to be wrapped, or
@@ -90,6 +91,36 @@ function createWrapFn(useShadowTargets) {
     });
   }
 
+  function ShadowTarget(original) {
+    if (Array.isArray(original)) {
+      return [];
+    }
+    if (typeof original === 'function') {
+      return function() {};
+    }
+    return {};
+  }
+
+  // Wraps the shadow target, that way the private symbols (which would
+  // normally transparently interact with a proxy's target) fire getPrototypeOf
+  // traps. Without this wrapper, the shadow target (which can't have an
+  // in-sync prototype chain in all circumstances) would not be able to
+  // traverse the membrane's prototype.
+  function ShadowWrapper(shadow) {
+    const wrapper = new ProtoProxy(shadow, {
+      getPrototypeOf(target) {
+        const original = targetsToOriginals.get(wrapper);
+        const proxy = originalsToProxies.get(original);
+        return Reflect.getPrototypeOf(proxy);
+      },
+
+      // setPrototypeOf(target) {
+      // },
+    });
+
+    return wrapper;
+  }
+
   /**
    * Wraps the object in a new membrane proxy.
    * Mines is a set of objects exposed through the membrane that belong to the
@@ -107,7 +138,9 @@ function createWrapFn(useShadowTargets) {
     if (originalsToProxies.has(original)) return originalsToProxies.get(original);
 
     // Shadow targets are currently used by other Membrane implementations.
-    const target = useShadowTargets ? new ShadowTarget(original) : original;
+    const target = useShadowTargets
+      ? new ShadowWrapper(new ShadowTarget(original))
+      : original;
 
     const proxy = new TransparentProxy(target, {
       apply(target, thisArg, argArray) {
@@ -168,6 +201,7 @@ function createWrapFn(useShadowTargets) {
 
     mines.add(original);
     originalsToTargets.set(original, target);
+    targetsToOriginals.set(target, original);
     originalsToProxies.set(original, proxy);
     proxiesToOriginals.set(proxy, original);
 

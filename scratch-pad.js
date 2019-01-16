@@ -23,7 +23,7 @@ const Right = {
   base: { leftBase: true },
   proto: { leftProto: true },
   value: { leftValue: true },
-  field: leftField,
+  field: rightField,
 
   get(obj) {
     return obj[rightField];
@@ -43,10 +43,10 @@ const pRight = graph.Right;
 
 
 Reflect.setPrototypeOf(Left.base, Left.proto);
-Left.proto[Left.field] = Left.value;
+pLeft.proto[Right.field] = pLeft.value;
 
-console.assert(pLeft.get(pLeft.proto) === pLeft.value);
-console.assert(pLeft.get(pLeft.base) === pLeft.value);
-console.assert(pLeft.proto[pLeft.field] === pLeft.value);
-console.assert(pLeft.base[pLeft.field] === pLeft.value);
+console.assert(Right.get(pLeft.proto) === pLeft.value);
+console.assert(Right.get(pLeft.base) === pLeft.value);
+console.assert(pLeft.proto[Right.field] === pLeft.value);
+console.assert(pLeft.base[Right.field] === pLeft.value);
 
