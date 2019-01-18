@@ -119,14 +119,18 @@ function createWrapFn({
   // traps. Without this wrapper, the shadow target (which can't have an
   // in-sync prototype chain in all circumstances) would not be able to
   // traverse the membrane's prototype.
-  function ShadowWrapper(shadow) {
+  function ShadowWrapper(shadow, original, mines, others) {
     if (!useShadowWrapper && !useBlockWrapper && !useBlockWrapperAllowOwn) {
+      if (!useShadowWrapper) {
+        const proto = Reflect.getPrototypeOf(original);
+        const crossed = crossMembrane(proto, mines, others);
+        Reflect.setPrototypeOf(shadow, crossed);
+      }
       return shadow;
     }
 
     const wrapper = new ProtoProxy(shadow, {
       getPrototypeOf(target) {
-        const original = targetsToOriginals.get(wrapper);
         const proxy = originalsToProxies.get(original);
         return Reflect.getPrototypeOf(proxy);
       },
@@ -160,7 +164,7 @@ function createWrapFn({
 
     // Shadow targets are currently used by other Membrane implementations.
     const target = useShadowTargets
-      ? new ShadowWrapper(new ShadowTarget(original))
+      ? new ShadowWrapper(new ShadowTarget(original), original, mines, others)
       : original;
 
     const proxy = new TransparentProxy(target, {
@@ -208,6 +212,8 @@ function createWrapFn({
       },
 
       setPrototypeOf(target, proto) {
+        Reflect.setPrototypeOf(target, proto);
+
         // The proto is guaranteed to be from the other object graph.
         proto = crossMembrane(proto, others, mines);
 

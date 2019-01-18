@@ -2,7 +2,7 @@ const helpers = require('./__helpers');
 
 const defaultOptions = {
   syncWhenExposed: true,
-  useShadowWrapper: true,
+  useShadowWrapper: false,
   useWhitelistApi: true,
   useBlockWrapper: false,
   useBlockWrapperAllowOwn: false,
